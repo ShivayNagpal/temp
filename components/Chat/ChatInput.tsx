@@ -383,13 +383,13 @@ export const ChatInput = ({ onSend, onRegenerate, textareaRef }: Props) => {
         </ChatInputContainer>
       )}
       <ChatInputContainer className="mb-4">
-        <button
+        {/* <button
           className="absolute left-2 top-2 rounded-sm p-1 text-neutral-800 opacity-60 hover:bg-neutral-200 hover:text-neutral-900 dark:bg-opacity-50 dark:text-neutral-100 dark:hover:text-neutral-200"
           onClick={() => setShowPluginSelect(!showPluginSelect)}
           onKeyDown={(e) => {}}
         >
           <ChatModeIcon chatMode={chatMode} />
-        </button>
+        </button> */}
         {showPluginSelect && (
           <div className="absolute left-0 bottom-14 rounded bg-white dark:bg-[#343541]">
             <ChatModeSelect
@@ -476,7 +476,7 @@ export const ChatInput = ({ onSend, onRegenerate, textareaRef }: Props) => {
           <ChatInputTokenCount content={content} />
         </div>
       </ChatInputContainer>
-      <div className="px-3 pt-2 pb-3 text-center text-[12px] text-black/50 dark:text-white/50 md:px-4 md:pt-3 md:pb-6">
+      {/* <div className="px-3 pt-2 pb-3 text-center text-[12px] text-black/50 dark:text-white/50 md:px-4 md:pt-3 md:pb-6">
         <a
           href="https://github.com/dotneet/smart-chatbot-ui"
           target="_blank"
@@ -489,7 +489,7 @@ export const ChatInput = ({ onSend, onRegenerate, textareaRef }: Props) => {
         {t(
           "Smart Chatbot UI is an advanced chatbot kit for OpenAI's chat models aiming to mimic ChatGPT's interface and functionality.",
         )}
-      </div>
+      </div> */}
     </div>
   );
 };
