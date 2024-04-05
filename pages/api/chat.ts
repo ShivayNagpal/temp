@@ -15,19 +15,11 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]';
 
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import path from 'node:path';
 import loggerFn from 'pino';
 
 const logger = loggerFn({ name: 'chat' });
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  const vercelFunctionHack = path.resolve('./public', '');
-
-  const client = new QdrantClient({
-    url: process.env.QDRANTCLIENT_URL,
-    apiKey: process.env.QDRANTCLIENT_API_KEY,
-  });
-
   if (!(await ensureHasValidSession(req, res))) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -41,6 +33,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { model, messages, key, prompt, temperature } = ChatBodySchema.parse(
     req.body,
   );
+
   try {
     await verifyUserLlmUsage(userId, model.id);
   } catch (e: any) {
@@ -65,6 +58,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       messages,
     );
 
+    if (messagesToSend.length === 0) {
+      console.error('No messages to send');
+    }
+
     const embeddings = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_API_KEY,
     });
@@ -83,28 +80,32 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       limit: 8,
     });
 
-    const systemPrompt = `The user is asking about ${
-      messagesToSend[0].content
-    }. 
-                          Here are some related articles: from this ${JSON.stringify(
-                            searchResult,
-                          )}
-                          Provie the user with the information they need.`;
+    const commonPrompt: {
+      content: string;
+      role: 'system' | 'assistant' | 'user';
+    } = {
+      role: 'system',
+      content: `The user is asking about ${
+        messagesToSend[messagesToSend.length - 1].content
+      }.
+        Here are some related articles: from this ${JSON.stringify(
+          searchResult,
+        )}
+        Provie the user with the information they need.`,
+    };
 
-    if (messagesToSend.length === 0) {
-      throw new Error('message is too long');
+    if (searchResult.length > 1) {
+      messagesToSend[messagesToSend.length - 1] = commonPrompt;
+    } else {
+      messagesToSend = [commonPrompt];
     }
+
     const stream = await OpenAIStream(
       model,
       systemPromptToSend,
       temperature,
       key,
-      [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-      ],
+      messagesToSend,
       maxToken,
     );
     res.status(200);

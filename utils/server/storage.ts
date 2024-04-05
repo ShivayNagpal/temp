@@ -1,14 +1,14 @@
 import { Conversation } from '@/types/chat';
 import { FolderInterface } from '@/types/folder';
+import { LlmPriceRate, NewUserLlmUsage, UserLlmUsage } from '@/types/llmUsage';
+import { OpenAIModelID } from '@/types/openai';
 import { Prompt, PromptSchema } from '@/types/prompt';
 import { Settings } from '@/types/settings';
+import { User, UserRole } from '@/types/user';
 
 import { MONGODB_DB } from '../app/const';
 
 import { Collection, Db, MongoClient } from 'mongodb';
-import { User, UserRole } from '@/types/user';
-import { UserLlmUsage, NewUserLlmUsage, LlmPriceRate } from '@/types/llmUsage';
-import { OpenAIModelID } from '@/types/openai';
 
 let _db: Db | null = null;
 export async function getDb(): Promise<Db> {
@@ -18,7 +18,9 @@ export async function getDb(): Promise<Db> {
   if (_db !== null) {
     return _db;
   }
-  const client = new MongoClient(process.env.MONGODB_URI, { monitorCommands: true });
+  const client = new MongoClient(process.env.MONGODB_URI, {
+    monitorCommands: true,
+  });
   client.on('commandFailed', (event) => console.error(JSON.stringify(event)));
   await client.connect();
   let db = client.db(MONGODB_DB);
@@ -62,14 +64,15 @@ export class UserDb {
       _db.collection<ConversationCollectionItem>('conversations');
     this._folders = _db.collection<FoldersCollectionItem>('folders');
     this._prompts = _db.collection<PromptsCollectionItem>('prompts');
-    this._publicPrompts = _db.collection<PromptsCollectionItem>('publicPrompts');
+    this._publicPrompts =
+      _db.collection<PromptsCollectionItem>('publicPrompts');
     this._settings = _db.collection<SettingsCollectionItem>('settings');
     this._llmUsage = _db.collection<UserLlmUsage>('userLlmUsage');
     this._users = _db.collection<User>('users');
   }
 
   static async fromUserHash(userId: string, db?: Db): Promise<UserDb> {
-    if (!db) db = await getDb()
+    if (!db) db = await getDb();
     return new UserDb(db, userId);
   }
 
@@ -183,7 +186,7 @@ export class UserDb {
     return {
       userId: this._userId,
       theme: 'dark',
-      defaultTemperature: 1.0,
+      defaultTemperature: 0.2,
     };
   }
 
@@ -197,27 +200,30 @@ export class UserDb {
   }
 
   async publishPrompt(prompt: Prompt) {
-    return this._publicPrompts.insertOne(
-      {
-        prompt: { ...prompt, userId: this._userId },
-        userId: this._userId
-      });
+    return this._publicPrompts.insertOne({
+      prompt: { ...prompt, userId: this._userId },
+      userId: this._userId,
+    });
   }
 
-  async getLlmUsageBetweenDates(start: Date, end: Date): Promise<UserLlmUsage[]> {
-    return (await this._llmUsage.find({
-      userId: this._userId,
-      date: {
-        $gt: start,
-        $lt: end,
-      }
-    }).toArray());
+  async getLlmUsageBetweenDates(
+    start: Date,
+    end: Date,
+  ): Promise<UserLlmUsage[]> {
+    return await this._llmUsage
+      .find({
+        userId: this._userId,
+        date: {
+          $gt: start,
+          $lt: end,
+        },
+      })
+      .toArray();
   }
 
   async addLlmUsage(llmApiUsage: NewUserLlmUsage) {
     return this._llmUsage.insertOne({ ...llmApiUsage, userId: this._userId });
   }
-
 }
 
 export class PublicPromptsDb {
@@ -225,8 +231,10 @@ export class PublicPromptsDb {
   private _publicFolders: Collection<PublicFoldersCollectionItem>;
 
   constructor(_db: Db) {
-    this._publicPrompts = _db.collection<PromptsCollectionItem>('publicPrompts');
-    this._publicFolders = _db.collection<PublicFoldersCollectionItem>('publicFolders');
+    this._publicPrompts =
+      _db.collection<PromptsCollectionItem>('publicPrompts');
+    this._publicFolders =
+      _db.collection<PublicFoldersCollectionItem>('publicFolders');
   }
 
   async getFolders(): Promise<FolderInterface[]> {
@@ -248,9 +256,9 @@ export class PublicPromptsDb {
   async removeFolder(id: string) {
     await this._publicPrompts.updateMany(
       { 'prompt.folderId': id },
-      { $set: { "prompt.folderId": null } },
-      { upsert: false }
-    )
+      { $set: { 'prompt.folderId': null } },
+      { upsert: false },
+    );
     return this._publicFolders.deleteOne({
       'folder.id': id,
     });
@@ -265,8 +273,7 @@ export class PublicPromptsDb {
   }
 
   async getPrompt(id: string): Promise<Prompt | undefined> {
-    const item = await this._publicPrompts
-      .findOne({ 'prompt.id': id });
+    const item = await this._publicPrompts.findOne({ 'prompt.id': id });
     return item?.prompt;
   }
 
@@ -283,7 +290,6 @@ export class PublicPromptsDb {
       'prompt.id': id,
     });
   }
- 
 }
 
 export class UserInfoDb {
@@ -295,12 +301,12 @@ export class UserInfoDb {
 
   async getUser(id: string): Promise<User | null> {
     return await this._users.findOne({
-      _id: id
+      _id: id,
     });
   }
 
   async getUsers(): Promise<User[]> {
-    return (await this._users.find().toArray());
+    return await this._users.find().toArray();
   }
 
   async addUser(user: User) {
@@ -312,7 +318,7 @@ export class UserInfoDb {
       { _id: user._id },
       { $set: { ...user } },
       { upsert: true },
-    )
+    );
   }
 
   async saveUsers(users: User[]) {
@@ -324,7 +330,6 @@ export class UserInfoDb {
   async removeUser(id: string) {
     return await this._users.deleteOne({ _id: id });
   }
-
 }
 
 export class LlmsDb {

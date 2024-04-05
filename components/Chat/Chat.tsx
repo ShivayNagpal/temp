@@ -264,30 +264,6 @@ export const Chat = memo(() => {
                         'Predli Chat'
                       )}
                     </div>
-
-                    {models.length > 0 && (
-                      <div className="flex h-full flex-col space-y-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-600">
-                        <ModelSelect />
-
-                        <SystemPrompt
-                          conversation={selectedConversation}
-                          systemPrompt={systemPrompt}
-                          prompts={prompts}
-                          publicPrompts={publicPrompts}
-                          onChangePrompt={(prompt) => setSystemPrompt(prompt)}
-                        />
-
-                        <label className="mb-2 text-left text-neutral-700 dark:text-neutral-400">
-                          {t('Temperature')}
-                        </label>
-
-                        <TemperatureSlider
-                          onChangeTemperature={(temperature) =>
-                            setTemperature(temperature)
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
                 </>
               ) : (

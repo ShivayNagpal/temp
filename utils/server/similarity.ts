@@ -1,6 +1,9 @@
-import { OpenAIApi } from 'openai';
-import { saveLlmUsage } from './llmUsage';
 import { OpenAIModelID, OpenAIModels } from '@/types/openai';
+
+import { saveLlmUsage } from './llmUsage';
+
+import { OpenAIApi } from 'openai';
+
 export const createEmbedding = async (
   text: string,
   openai: OpenAIApi,
@@ -11,11 +14,11 @@ export const createEmbedding = async (
     model: modelId,
     input: text,
   });
-  await saveLlmUsage(userId, modelId, "embedding", {
+  await saveLlmUsage(userId, modelId, 'embedding', {
     prompt: result.data.usage?.prompt_tokens,
     completion: 0,
-    total: result.data.usage?.total_tokens
-  })
+    total: result.data.usage?.total_tokens,
+  });
   return result.data.data[0].embedding;
 };
 
