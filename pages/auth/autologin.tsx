@@ -44,16 +44,17 @@ export default function SignIn({
   }, [ref]);
   return (
     <form ref={ref} method="post" action="/api/auth/callback/credentials">
-      <input name="csrfToken" type="hidden" defaultValue={csrfToken} />
+      <input name="csrfToken" type="hidden" defaultValue={csrfToken||''} />
       <input name="email" type="hidden" defaultValue="" />
     </form>
   );
 }
 
-export async function getServerSideProps(context: GetServerSidePropsContext) {
+async function getServerSideProps(context: GetServerSidePropsContext) {
+  const csrfToken = await getCsrfToken(context);
   return {
     props: {
-      csrfToken: await getCsrfToken(context),
+      csrfToken: csrfToken || null,
     },
   };
 }
