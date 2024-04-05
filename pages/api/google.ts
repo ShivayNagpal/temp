@@ -1,21 +1,21 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { OpenAIError } from '@/utils/server';
 import { ensureHasValidSession, getUserHash } from '@/utils/server/auth';
+import { getErrorResponseBody } from '@/utils/server/error';
+import { saveLlmUsage, verifyUserLlmUsage } from '@/utils/server/llmUsage';
+import { getOpenAIApi } from '@/utils/server/openai';
 import { getTiktokenEncoding } from '@/utils/server/tiktoken';
 import { cleanSourceText } from '@/utils/server/webpage';
 
 import { Message } from '@/types/chat';
 import { GoogleBody, GoogleSource } from '@/types/google';
 
-import { Tiktoken } from 'tiktoken/lite/init';
 import { Readability } from '@mozilla/readability';
 import endent from 'endent';
 import jsdom, { JSDOM } from 'jsdom';
 import path from 'node:path';
-import { getOpenAIApi } from '@/utils/server/openai';
-import { OpenAIError } from '@/utils/server';
-import { getErrorResponseBody } from '@/utils/server/error';
-import { saveLlmUsage, verifyUserLlmUsage } from '@/utils/server/llmUsage';
+import { Tiktoken } from 'tiktoken/lite/init';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse<any>) => {
   // Vercel Hack
@@ -45,8 +45,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<any>) => {
     const query = encodeURIComponent(userMessage.content.trim());
 
     const googleRes = await fetch(
-      `https://customsearch.googleapis.com/customsearch/v1?key=${googleAPIKey ? googleAPIKey : process.env.GOOGLE_API_KEY
-      }&cx=${googleCSEId ? googleCSEId : process.env.GOOGLE_CSE_ID
+      `https://customsearch.googleapis.com/customsearch/v1?key=${
+        googleAPIKey ? googleAPIKey : process.env.GOOGLE_API_KEY
+      }&cx=${
+        googleCSEId ? googleCSEId : process.env.GOOGLE_CSE_ID
       }&q=${query}&num=5`,
     );
 
@@ -164,22 +166,22 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<any>) => {
         max_tokens: 1000,
         temperature: 1,
         stream: false,
-      })
+      });
     } catch (error: any) {
       if (error.response) {
         const { message, type, param, code } = error.response.data.error;
-        throw new OpenAIError(message, type, param, code)
-      } else throw error
+        throw new OpenAIError(message, type, param, code);
+      } else throw error;
     }
 
     const { choices: choices2, usage } = await answerRes.data;
     const answer = choices2[0].message!.content;
 
-    await saveLlmUsage(userId, model.id, "google", {
+    await saveLlmUsage(userId, model.id, 'google', {
       prompt: usage?.prompt_tokens ?? 0,
       completion: usage?.completion_tokens ?? 0,
-      total: usage?.total_tokens ?? 0
-    })
+      total: usage?.total_tokens ?? 0,
+    });
 
     res.status(200).json({ answer });
   } catch (error) {

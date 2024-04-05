@@ -3,26 +3,30 @@ import { getServerSession } from 'next-auth';
 
 import { DEFAULT_SYSTEM_PROMPT } from '@/utils/app/const';
 import { OpenAIStream } from '@/utils/server';
-import { saveLlmUsage, verifyUserLlmUsage } from '@/utils/server/llmUsage';
 import { ensureHasValidSession, getUserHash } from '@/utils/server/auth';
+import { getErrorResponseBody } from '@/utils/server/error';
+import { saveLlmUsage, verifyUserLlmUsage } from '@/utils/server/llmUsage';
 import { createMessagesToSend } from '@/utils/server/message';
 import { getTiktokenEncoding } from '@/utils/server/tiktoken';
-import { getErrorResponseBody } from '@/utils/server/error';
 
 import { ChatBodySchema } from '@/types/chat';
 
 import { authOptions } from '@/pages/api/auth/[...nextauth]';
 
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { QdrantClient } from '@qdrant/js-client-rest';
 import path from 'node:path';
 import loggerFn from 'pino';
 
 const logger = loggerFn({ name: 'chat' });
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  // Vercel Hack
-  // https://github.com/orgs/vercel/discussions/1278
-  // eslint-disable-next-line no-unused-vars
   const vercelFunctionHack = path.resolve('./public', '');
+
+  const client = new QdrantClient({
+    url: process.env.QDRANTCLIENT_URL,
+    apiKey: process.env.QDRANTCLIENT_API_KEY,
+  });
 
   if (!(await ensureHasValidSession(req, res))) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -49,13 +53,44 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!systemPromptToSend) {
       systemPromptToSend = DEFAULT_SYSTEM_PROMPT;
     }
-    let { messages: messagesToSend, maxToken, tokenCount } = createMessagesToSend(
+    let {
+      messages: messagesToSend,
+      maxToken,
+      tokenCount,
+    } = createMessagesToSend(
       encoding,
       model,
       systemPromptToSend,
       1000,
       messages,
     );
+
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const createVectorEmbedding = await embeddings.embedQuery(
+      messagesToSend[0].content,
+    );
+
+    const client = new QdrantClient({
+      url: process.env.QDRANTCLIENT_URL,
+      apiKey: process.env.QDRANTCLIENT_API_KEY,
+    });
+
+    const searchResult = await client.search('norrsken-funds', {
+      vector: createVectorEmbedding,
+      limit: 8,
+    });
+
+    const systemPrompt = `The user is asking about ${
+      messagesToSend[0].content
+    }. 
+                          Here are some related articles: from this ${JSON.stringify(
+                            searchResult,
+                          )}
+                          Provie the user with the information they need.`;
+
     if (messagesToSend.length === 0) {
       throw new Error('message is too long');
     }
@@ -64,7 +99,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       systemPromptToSend,
       temperature,
       key,
-      messagesToSend,
+      [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+      ],
       maxToken,
     );
     res.status(200);
@@ -78,7 +118,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const decoder = new TextDecoder();
     const reader = stream.getReader();
     let closed = false;
-    let responseText = "";
+    let responseText = '';
     while (!closed) {
       await reader.read().then(({ done, value }) => {
         if (done) {
@@ -92,11 +132,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
     const completionTokenCount = encoding.encode(responseText).length;
-    await saveLlmUsage(userId, model.id, "chat", {
+    await saveLlmUsage(userId, model.id, 'chat', {
       prompt: tokenCount,
       completion: completionTokenCount,
-      total: tokenCount + completionTokenCount
-    })
+      total: tokenCount + completionTokenCount,
+    });
   } catch (error) {
     console.error(error);
     const errorRes = getErrorResponseBody(error);
@@ -105,6 +145,5 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     encoding.free();
   }
 };
-
 
 export default handler;
