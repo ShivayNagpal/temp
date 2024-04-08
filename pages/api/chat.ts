@@ -10,6 +10,7 @@ import { createMessagesToSend } from '@/utils/server/message';
 import { getTiktokenEncoding } from '@/utils/server/tiktoken';
 
 import { ChatBodySchema } from '@/types/chat';
+import { OpenAIModelID, OpenAIModelType } from '@/types/openai';
 
 import { authOptions } from '@/pages/api/auth/[...nextauth]';
 
@@ -101,7 +102,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     const stream = await OpenAIStream(
-      model,
+      {
+        id: OpenAIModelID.GPT_4_TURBO_PREVIEW,
+        type: OpenAIModelType.CHAT,
+        name: 'GPT-4 Turbo',
+        maxLength: 4096,
+        tokenLimit: 128000,
+      },
       systemPromptToSend,
       temperature,
       key,

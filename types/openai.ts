@@ -8,7 +8,7 @@ export enum OpenAIModelID {
   GPT_4 = 'gpt-4',
   GPT_4_32K = 'gpt-4-32k',
   TEXT_EMBEDDING_ADA_002 = 'text-embedding-ada-002',
-  GPT_4_TURBO = 'gpt-4-turbo',
+  GPT_4_TURBO_PREVIEW = 'gpt-4-turbo-preview',
 }
 
 export enum OpenAIModelType {
@@ -28,7 +28,7 @@ export const OpenAIModelSchema = z.object({
 export type OpenAIModel = z.infer<typeof OpenAIModelSchema>;
 
 // in case the `DEFAULT_MODEL` environment variable is not set or set to an unsupported model
-export const fallbackModelID = OpenAIModelID.GPT_4_TURBO;
+export const fallbackModelID = OpenAIModelID.GPT_4_TURBO_PREVIEW;
 
 export const OpenAIModels: Record<OpenAIModelID, OpenAIModel> = {
   [OpenAIModelID.GPT_3_5]: {
@@ -80,8 +80,8 @@ export const OpenAIModels: Record<OpenAIModelID, OpenAIModel> = {
     tokenLimit: 8000,
     type: OpenAIModelType.EMDEDDING,
   },
-  [OpenAIModelID.GPT_4_TURBO]: {
-    id: OpenAIModelID.GPT_4_TURBO,
+  [OpenAIModelID.GPT_4_TURBO_PREVIEW]: {
+    id: OpenAIModelID.GPT_4_TURBO_PREVIEW,
     name: 'GPT-4 Turbo',
     maxLength: 4096,
     tokenLimit: 4096,
