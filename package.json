@@ -8,8 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "/home/site/wwwroot/node_modules/next/dist/bin/next",
-    "startLocal" : "next start",
+    "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
     "test": "vitest",
