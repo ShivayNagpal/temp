@@ -20,6 +20,10 @@ import loggerFn from 'pino';
 
 const logger = loggerFn({ name: 'chat' });
 
+function extractFilenames(objects: any[]): string[] {
+  return objects.map((obj) => obj.payload.file_name);
+}
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!(await ensureHasValidSession(req, res))) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -81,6 +85,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       limit: 8,
     });
 
+    const filenames: string[] = extractFilenames(searchResult);
+
+    console.log(filenames);
+
     const commonPrompt: {
       content: string;
       role: 'system' | 'assistant' | 'user';
@@ -92,7 +100,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         Here are some related articles: from this ${JSON.stringify(
           searchResult,
         )}
-        Provie the user with the information they need.`,
+        Provie the user with the information they need.
+        list the below file name at the end of the response ${filenames.join(
+          ', ',
+        )}` as string,
     };
 
     if (searchResult.length > 1) {
